@@ -9,7 +9,7 @@ from quant.bet import Player
 from quant.data import Data
 from quant.data_helper import TeamData
 from quant.predict import Ai
-from quant.ranking.Elo import Elo, EloByLocation
+from quant.ranking.elo import Elo, EloByLocation
 from quant.types import Match, Opp, Summary, match_to_opp
 
 
