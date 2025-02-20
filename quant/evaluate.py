@@ -1,11 +1,11 @@
 import sys
 
-import pandas as pd
-
 sys.path.append(".")
 
-from environment import Environment
+import pandas as pd
 from model import Model
+
+from quant.environment import Environment
 
 games = pd.read_csv("./data/games.csv", index_col=0)
 games["Date"] = pd.to_datetime(games["Date"])

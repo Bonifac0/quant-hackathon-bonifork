@@ -9,14 +9,12 @@ Match = namedtuple(
     "Match",
     [
         "Index",
-        "GameID",
         "Season",
         "Date",
         "HID",
         "AID",
         "N",
         "POFF",
-        "Open",
         "OddsH",
         "OddsA",
         "H",
@@ -52,6 +50,34 @@ Match = namedtuple(
         "HPF",
         "APF",
     ],
+    defaults=(None,) * 32,
+)
+
+Opp = namedtuple(
+    "Opp",
+    [
+        "Index",
+        "Season",
+        "Date",
+        "HID",
+        "AID",
+        "N",
+        "POFF",
+        "OddsH",
+        "OddsA",
+        "BetH",
+        "BetA",
+    ],
+)
+
+Summary = namedtuple(
+    "Summary",
+    [
+        "Bankroll",
+        "Date",
+        "Min_bet",
+        "Max_bet",
+    ],
 )
 
 
@@ -65,3 +91,24 @@ class RankingModel(Protocol):
     def rankings(self) -> dict[TeamID, float]:
         """Return normalized rankings."""
         raise NotImplementedError
+
+
+def match_to_opp(match: Match) -> Opp:
+    """
+    Convert Match to Opp.
+
+    Fills Bets with 0.
+    """
+    return Opp(
+        Index=match.Index,
+        Season=match.Season,
+        Date=match.Date,
+        HID=match.HID,
+        AID=match.AID,
+        N=match.N,
+        POFF=match.POFF,
+        OddsH=match.OddsH,
+        OddsA=match.OddsA,
+        BetH=0,
+        BetA=0,
+    )

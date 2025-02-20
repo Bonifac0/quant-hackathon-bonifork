@@ -783,6 +783,7 @@ class Model:
         self.trained = True
 
 
+'''
 def calculate_elo_accuracy(data: list[list[int]]) -> float:
     """Calculate the accuracy of ELO predictions."""
     correct_predictions = 0
@@ -803,6 +804,7 @@ def calculate_elo_accuracy(data: list[list[int]]) -> float:
 
     # Calculate accuracy as a percentage
     return correct_predictions / total_games
+'''
 
 
 class Ai:
