@@ -1,32 +1,30 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
-
-class IModel(Protocol):
-    def place_bets(
-        self, summary: pd.DataFrame, opps: pd.DataFrame, inc: pd.DataFrame
-    ) -> pd.DataFrame:
-        raise NotImplementedError
+if TYPE_CHECKING:
+    from model import IModel
 
 
 class Environment:
-    result_cols = ["H", "A"]
+    """Handle main cycle."""
 
-    odds_cols = ["OddsH", "OddsA"]
+    result_cols: list[str] = ["H", "A"]  # noqa: RUF012
 
-    bet_cols = ["BetH", "BetA"]
+    odds_cols: list[str] = ["OddsH", "OddsA"]  # noqa: RUF012
 
-    score_cols = ["HSC", "ASC"]
+    bet_cols: list[str] = ["BetH", "BetA"]  # noqa: RUF012
+
+    score_cols: list[str] = ["HSC", "ASC"]  # noqa: RUF012
 
     # fmt: off
-    feature_cols = [
+    feature_cols: list[str] = [  # noqa: RUF012
         "HFGM", "AFGM", "HFGA", "AFGA", "HFG3M", "AFG3M", "HFG3A", "AFG3A",
-        "HFTM", "AFTM", "HFTA", "AFTA", "HORB", "AORB", "HDRB", "ADRB", "HRB", "ARB", "HAST",
-        "AAST", "HSTL", "ASTL", "HBLK", "ABLK", "HTOV", "ATOV", "HPF", "APF",
+        "HFTM", "AFTM", "HFTA", "AFTA", "HORB", "AORB", "HDRB", "ADRB", "HRB", "ARB",
+        "HAST", "AAST", "HSTL", "ASTL", "HBLK", "ABLK", "HTOV", "ATOV", "HPF", "APF",
     ]
     # fmt: on
 
@@ -38,9 +36,10 @@ class Environment:
         start_date: pd.Timestamp | None = None,
         end_date: pd.Timestamp | None = None,
         init_bankroll: float = 1000.0,
-        min_bet=0,
-        max_bet=np.inf,
+        min_bet: float = 0,
+        max_bet: float = np.inf,
     ):
+        """Init environment."""
         self.games = games
         self.players = players
         self.games[self.bet_cols] = 0.0
@@ -62,21 +61,23 @@ class Environment:
 
         self.history = {"Date": [], "Bankroll": [], "Cash_Invested": []}
 
-    def run(self):
-        print(f"Start: {self.start_date}, End: {self.end_date}")
+    def run(self) -> pd.DataFrame:
+        """Go thru each given date."""
+        print()  # for empty line on start
+        print(f"Start: {self.start_date.date()}, End: {self.end_date.date()}")
         for date in pd.date_range(self.start_date, self.end_date):
             # get results from previous day(s) and evaluate bets
-            inc = self._next_date(date)
+            matches, players = self._next_date(date)
 
             # get betting options for current day
             # today's games + next day(s) games -> self.odds_availability
             opps = self._get_options(date)
-            if opps.empty and inc[0].empty and inc[1].empty:
+            if opps.empty and matches.empty and players.empty:
                 continue
 
             summary = self._generate_summary(date)
 
-            bets = self.model.place_bets(summary, opps, inc)
+            bets = self.model.place_bets(summary, opps, matches)
 
             validated_bets = self._validate_bets(bets, opps)
 
@@ -87,11 +88,13 @@ class Environment:
 
         return self.games
 
-    def get_history(self):
+    def get_history(self) -> pd.DataFrame:
+        """Get dataframe of cash history."""
         history = pd.DataFrame(data=self.history)
         return history.set_index("Date")
 
-    def _next_date(self, date: pd.Timestamp):
+    def _next_date(self, date: pd.Timestamp) -> pd.DataFrame:
+        """Go thru every match in given date."""
         games = self.games.loc[
             (self.games["Date"] > self.last_seen) & (self.games["Date"] < date)
         ]
@@ -113,11 +116,12 @@ class Environment:
             # save current bankroll
             self._save_state(date + pd.Timedelta(6, unit="h"), 0.0)
 
-        print(f"{date} Bankroll: {self.bankroll:.2f}   ", end="\r")
+        print(f"{date.date()} Bankroll: {self.bankroll:.2f}   ", end="\r")
 
         return games.drop(["Open", *self.bet_cols], axis=1), players
 
-    def _get_options(self, date: pd.Timestamp):
+    def _get_options(self, date: pd.Timestamp) -> pd.DataFrame:
+        """Return options."""
         opps = self.games.loc[
             (self.games["Open"] <= date) & (self.games["Date"] >= date)
         ]
@@ -127,7 +131,7 @@ class Environment:
             axis=1,
         )
 
-    def _validate_bets(self, bets: pd.DataFrame, opps: pd.DataFrame):
+    def _validate_bets(self, bets: pd.DataFrame, opps: pd.DataFrame) -> pd.DataFrame:
         # print("Validating bets")
         rows = bets.index.intersection(opps.index)
         cols = bets.columns.intersection(self.bet_cols)

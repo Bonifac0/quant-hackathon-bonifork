@@ -1,91 +1,98 @@
-# handles betting starteggy
 import math
-from itertools import product
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import minimize
+
+from quant.types import Summary
 
 
-class Player:
+class Betting:
     """Handles betting strateggy."""
 
     def get_expected_profit(
-        self, prob: float, ratio: float, prop_of_budget: float
+        self, probability: float, ratio: float, proportion: float
     ) -> float:
-        """Get expected profit for given parametrs."""
-        return (prob * ratio - 1) * prop_of_budget
+        """Calculate the expected profit for given parametrs."""
+        return (probability * ratio - 1) * proportion
 
     def get_variance_of_profit(
-        self, prob: float, ratio: float, prop_of_budget: float
+        self, probability: float, ratio: float, proportion: float
     ) -> float:
-        """Get varience of profit for given parameters."""
-        return (1 - prob) * prob * (prop_of_budget**2) * (ratio**2)
+        """Calculate the variance of profit for given parameters."""
+        return (1 - probability) * probability * (proportion**2) * (ratio**2)
 
     def sharpe_ratio(self, total_profit: float, total_var: float) -> float:
-        """Return total sharp ratio."""
-        if total_var == 0:
-            return np.inf
-        return total_profit / math.sqrt(total_var)
+        """Return total sharpe ratio."""
+        return total_profit / math.sqrt(total_var) if total_var > 0 else float("inf")
 
-    def max_function(
-        self, props: np.ndarray, probs: np.ndarray, ratios: np.ndarray
+    def min_function(
+        self, proportions: np.ndarray, probabilities: np.ndarray, ratios: np.ndarray
     ) -> float:
-        """We are trying to minimaze this function for sharp ratio."""
+        """We are trying to minimize this function for sharpe ratio."""
         total_profit = 0
         total_var = 0
-        for i in range(len(probs)):
-            for j in range(2):
-                prob = probs[i][j]
-                ratio = ratios[i][j]
-                prop_of_budget = props[i * len(probs[i]) + j]
-                if len(probs[i]) != 2 or len(ratios) != len(probs):
-                    print("min_funciton, wrong format of probs")
-                total_profit += self.get_expected_profit(prob, ratio, prop_of_budget)
-                total_var += self.get_variance_of_profit(prob, ratio, prop_of_budget)
-        return self.sharpe_ratio(total_profit, total_var)
+        for i in range(len(probabilities)):
+            for j in range(len(probabilities[i])):
+                probability = probabilities[i][
+                    j
+                ]  # First column is for win, second column is for loss
+                ratio = ratios[i][j]  # Use the ratio corresponding to the win scenario
+                # Access flattened array index
+                prop_of_budget = proportions[i * len(probabilities[i]) + j]
+                total_profit += self.get_expected_profit(
+                    probability, ratio, prop_of_budget
+                )
+                total_var += self.get_variance_of_profit(
+                    probability, ratio, prop_of_budget
+                )
+        return -self.sharpe_ratio(total_profit, total_var)
 
     def get_bet_proportions(
         self,
-        probs: np.ndarray,
+        probabilities: np.ndarray,
         active_matches: pd.DataFrame,
-        summary: pd.DataFrame,
-        step: float,
+        summary: Summary,
     ) -> np.ndarray:
-        """Return proportions of the budget to bet on speific probs, (in the same format as probs)."""
-        num_bets = probs.shape[0] * probs.shape[1]
-        possible_ranges = []
-        for _ in range(num_bets):
-            min_bound = summary.iloc[0]["Min_bet"] / summary.iloc[0]["Bankroll"]
-            max_bound = summary.iloc[0]["Max_bet"] / summary.iloc[0]["Bankroll"]
-            possible_ranges.append(
-                [0, *list(np.arange(min_bound, max_bound + step, step))]
-            )
+        """Get bet proportind thru Sharp ratio. Probabilities: 2d array."""
+        ratios = np.array(active_matches[["OddsH", "OddsA"]])
+        initial_props = np.full_like(probabilities, 0.01, dtype=float)
 
-        all_combinations = product(*possible_ranges)
-        best_sharpe = -np.inf
-        best_allocation = None
-        for props in all_combinations:
-            sharpe = self.max_function(
-                np.array(props), probs, np.array(active_matches[["OddsH", "OddsA"]])
-            )
-            if sharpe > best_sharpe:
-                best_sharpe = sharpe
-                best_allocation = props
+        # Constraint: sum of all props <= 1
+        # (global budget constraint for entire 2D array)
+        cons = [
+            {"type": "ineq", "fun": lambda props: 1.0 - sum(props)}
+        ]  # Global budget constraint
 
-        return np.array(best_allocation).reshape(probs.shape)
+        # Bounds: Each proportion must be between 0 and 1
+        bounds = [
+            (0, (summary.Max_bet / summary.Bankroll))
+            for _ in range(probabilities.shape[0] * probabilities.shape[1])
+        ]
+
+        # Flatten the props for optimization and define the bounds
+        initial_props_flat = initial_props.flatten()
+        # Objective function minimization
+        result = minimize(
+            self.min_function,
+            initial_props_flat,
+            args=(probabilities, ratios),
+            method="SLSQP",
+            bounds=bounds,
+            constraints=cons,
+            options={"ftol": 1e-6},
+        )
+        return np.array(result.x).reshape(probabilities.shape)
 
     def get_betting_strategy(
         self,
-        probabilities: np.ndarray,
+        probabilities: pd.DataFrame,
         active_matches: pd.DataFrame,
-        summary: pd.DataFrame,
-    ) -> list:
+        summary: Summary,
+    ) -> np.ndarray:
         """Return absolute cash numbers and on what to bet in 2d list."""
-        proportions = self.get_bet_proportions(
-            probabilities, active_matches, summary, 0.001
+        proportions: list[float] = (
+            self.get_bet_proportions(probabilities.to_numpy(), active_matches, summary)
+            * summary.Bankroll
         )
-        bets = [[0] * 2 for _ in range(len(proportions))]
-        for i in range(len(proportions)):
-            for j in range(2):
-                bets[i][j] = proportions[i][j] * summary.iloc[0]["Bankroll"]
-        return bets
+        return np.array(proportions).round(decimals=0)

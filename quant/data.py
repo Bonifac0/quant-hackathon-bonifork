@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 from enum import IntEnum
+from typing import TYPE_CHECKING, TypeAlias
 
-import numpy as np
 import pandas as pd
 
 from quant.data_helper import Team, TeamData
-from quant.types import Match
+
+if TYPE_CHECKING:
+    from quant.types import Match, Opp
+
+TeamID: TypeAlias = int
 
 
 class GamePlace(IntEnum):
@@ -21,51 +25,29 @@ class GamePlace(IntEnum):
 class Data:
     """Class for working with data."""
 
-    def __init__(self, data: pd.DataFrame) -> None:
+    def __init__(self) -> None:
         """Create Data from csv file."""
-        self.data = data
-        self.teams_data: dict[int, TeamData] = {}
+        self.teams: dict[TeamID, TeamData] = {}
 
-    def _get_match_array(self, match: Match) -> np.ndarray:
-        """
-        Return array for specific match and update team data.
+    def add_match(self, match: Match) -> None:
+        """Update team data based on data from one mach."""
+        self.teams.setdefault(match.HID, TeamData(match.HID)).update(match, Team.Home)
+        self.teams.setdefault(match.AID, TeamData(match.AID)).update(match, Team.Away)
 
-        Based on matches that happend so far.
-        Used for making training matrix.
-        """
-        h_id: int = match.HID
-        a_id: int = match.AID
+    def team_data(self, team_id: TeamID) -> TeamData:
+        """Return the TeamData for given team."""
+        return self.teams[team_id]
+
+    def get_match_parameters(self, match: Opp) -> pd.Series:
+        """Get array for match."""
+        home_team = self.teams.setdefault(match.HID, TeamData(match.HID))
+        away_team = self.teams.setdefault(match.AID, TeamData(match.AID))
+
         date: pd.Timestamp = pd.to_datetime(match.Date)
 
-        home_team = self.teams_data.setdefault(h_id, TeamData(h_id))
-        away_team = self.teams_data.setdefault(a_id, TeamData(a_id))
-
-        output: np.ndarray = np.concatenate(
-            (
-                home_team.get_data_vector(Team.Home, date),
-                away_team.get_data_vector(Team.Away, date),
-            )
+        return pd.concat(
+            [
+                home_team.get_data_series(date, Team.Home),
+                away_team.get_data_series(date, Team.Away),
+            ]
         )
-
-        home_team.update(match, Team.Home)
-        away_team.update(match, Team.Away)
-
-        return output
-
-    def get_train_matrix(self) -> np.ndarray:
-        """Create train matrix from the current data."""
-        train_matrix: np.ndarray = np.empty((len(self.data), 2 * TeamData.COLUMNS))
-        for match in (Match(*row) for row in self.data.itertuples(index=True)):
-            train_matrix[match.Index] = self._get_match_array(match)
-            print(f"\r{match.Index}", end="")
-
-        return train_matrix
-
-
-if __name__ == "__main__":
-    dataframe = pd.read_csv("quant/datasets/games.csv")
-
-    # model = Elo()
-
-    data = Data(dataframe)
-    data.get_train_matrix()
