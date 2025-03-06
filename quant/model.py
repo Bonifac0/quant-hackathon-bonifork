@@ -8,16 +8,23 @@ import pandas as pd
 from quant.bet import Player
 from quant.data import Data
 from quant.data_helper import TeamData
-from quant.predict import Ai
+from quant.predictors import AiRegresor
 from quant.ranking.elo import Elo, EloByLocation
-from quant.types import Match, Opp, Summary, match_to_opp
+from quant.types import IModel, Match, Opp, Summary, match_to_opp
 
 
-class Model:
+class Model(IModel):
     """Main class."""
 
     TRAIN_SIZE: int = 2000
     FIRST_TRAIN_MOD: int = 4
+    RANKING_COLUMNS: tuple[str, ...] = (
+        "HomeElo",
+        "AwayElo",
+        "EloByLocation",
+    )
+    MATCH_PARAMETERS = len(TeamData.COLUMNS) + len(RANKING_COLUMNS)
+    TRAINING_DATA_COLUMNS: tuple[str, ...] = (*RANKING_COLUMNS, *TeamData.MATCH_COLUMNS)
 
     def __init__(self) -> None:
         """Init classes."""
@@ -25,7 +32,7 @@ class Model:
         self.elo = Elo()
         self.elo_by_location = EloByLocation()
         self.player = Player()
-        self.ai = Ai()
+        self.ai = AiRegresor()
         self.trained = False
         self.data = Data()
         self.season_number: int = 0
@@ -45,10 +52,10 @@ class Model:
         self,
         summ: pd.DataFrame,
         opps: pd.DataFrame,
-        inc: tuple[pd.DataFrame, pd.DataFrame],
+        matches: pd.DataFrame,
     ) -> pd.DataFrame:
         """Run main function."""
-        games_increment = inc[0]
+        games_increment = matches
         summary = Summary(*summ.iloc[0])
 
         if not self.trained:
@@ -115,14 +122,6 @@ class Model:
 
         return new_bets.reindex(opps.index, fill_value=0)
 
-    RANKING_COLUMNS: tuple[str, ...] = (
-        "HomeElo",
-        "AwayElo",
-        "EloByLocation",
-    )
-    MATCH_PARAMETERS = len(TeamData.COLUMNS) + len(RANKING_COLUMNS)
-    TRAINING_DATA_COLUMNS: tuple[str, ...] = (*RANKING_COLUMNS, *TeamData.MATCH_COLUMNS)
-
     def create_dataframe(self, active_matches: pd.DataFrame) -> pd.DataFrame:
         """Get matches to predict outcome for."""
         return cast(
@@ -176,7 +175,7 @@ class Model:
         self.old_matches = training_dataframe
         self.old_outcomes = outcomes
 
-        self.ai.train(training_dataframe, outcomes)
+        self.ai.fit(training_dataframe, outcomes)
         self.trained = True
 
     def train_ai_reg(self, dataframe: pd.DataFrame) -> None:
@@ -205,25 +204,3 @@ class Model:
 
         self.ai.train_reg(training_dataframe, outcomes)
         self.trained = True
-
-
-def calculate_elo_accuracy(data: list[list[int]]) -> float:
-    """Calculate the accuracy of ELO predictions."""
-    correct_predictions = 0
-    total_games = len(data)
-    games = np.array(data)[:, :-1]
-    outcomes = np.array(data)[:, -1].clip(0, 1).round(decimals=0)
-    for i in range(len(data)):
-        elo_home = games[i][0]
-        elo_away = games[i][1]
-        outcome = outcomes[i]
-
-        # Predict home win if home ELO is greater than away ELO
-        predicted_outcome = 1 if elo_home > elo_away else 0
-
-        # Compare predicted outcome with actual outcome
-        if predicted_outcome == outcome:
-            correct_predictions += 1
-
-    # Calculate accuracy as a percentage
-    return correct_predictions / total_games

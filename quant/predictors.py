@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# handles predicting results
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn import metrics, model_selection
 
+from quant.types import IAi
+
 if TYPE_CHECKING:
     import os
 
 
-class Ai:
+class AiRegresor(IAi):
     """Class for training and predicting."""
 
     model: xgb.XGBRegressor | xgb.XGBClassifier
@@ -21,7 +22,7 @@ class Ai:
         """Create a new Model from a XGBClassifier."""
         self.initialized = False
 
-    def train(self, training_dataframe: pd.DataFrame, outcomes: pd.Series) -> None:
+    def fit(self, training_dataframe: pd.DataFrame, outcomes: pd.Series) -> None:
         """Return trained model."""
         if not self.initialized:
             self.model = xgb.XGBClassifier()

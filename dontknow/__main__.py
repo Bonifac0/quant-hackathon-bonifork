@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from quant.data import Data
-from quant.predict import Ai
+from quant.predictors import AiRegresor
 from quant.types import Match
 
 
@@ -19,7 +19,7 @@ def main(data_path: str, model_path: str) -> None:
     data.get_train_matrix()
     return
 
-    ai = Ai.untrained()
+    ai = AiRegresor.untrained()
 
     train_matrix = np.ndarray([dataframe.shape[0], 5])
 

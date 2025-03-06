@@ -1,7 +1,10 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: A005
 
 from collections import namedtuple
-from typing import Protocol, TypeAlias
+from typing import TYPE_CHECKING, Protocol, TypeAlias
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 TeamID: TypeAlias = int
 
@@ -90,6 +93,26 @@ class RankingModel(Protocol):
 
     def rankings(self) -> dict[TeamID, float]:
         """Return normalized rankings."""
+        raise NotImplementedError
+
+
+class IAi(Protocol):
+    """Ai interface."""
+
+    def place_bets(
+        self, summary: pd.DataFrame, opps: pd.DataFrame, inc: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Check for implementation of bet fcn."""
+        raise NotImplementedError
+
+
+class IModel(Protocol):
+    """Model interface."""
+
+    def place_bets(
+        self, summary: pd.DataFrame, opps: pd.DataFrame, inc: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Check for implementation of bet fcn."""
         raise NotImplementedError
 
 

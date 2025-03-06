@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from quant.types import Opp, RankingModel
 
 if TYPE_CHECKING:
@@ -157,3 +159,25 @@ class EloByLocation(RankingModel):
         """Reset the model."""
         self.teams_home.clear()
         self.teams_away.clear()
+
+
+def calculate_elo_accuracy(data: list[list[int]]) -> float:
+    """Calculate the accuracy of ELO predictions."""
+    correct_predictions = 0
+    total_games = len(data)
+    games = np.array(data)[:, :-1]
+    outcomes = np.array(data)[:, -1].clip(0, 1).round(decimals=0)
+    for i in range(len(data)):
+        elo_home = games[i][0]
+        elo_away = games[i][1]
+        outcome = outcomes[i]
+
+        # Predict home win if home ELO is greater than away ELO
+        predicted_outcome = 1 if elo_home > elo_away else 0
+
+        # Compare predicted outcome with actual outcome
+        if predicted_outcome == outcome:
+            correct_predictions += 1
+
+    # Calculate accuracy as a percentage
+    return correct_predictions / total_games
