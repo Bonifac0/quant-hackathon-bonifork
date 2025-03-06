@@ -51,14 +51,3 @@ class Data:
                 away_team.get_data_series(date, Team.Away),
             ]
         )
-
-
-"""
-if __name__ == "__main__":
-    dataframe = pd.read_csv("quant/datasets/games.csv")
-
-    # model = Elo()
-
-    data = Data(dataframe)
-    data.get_train_matrix()
-"""
