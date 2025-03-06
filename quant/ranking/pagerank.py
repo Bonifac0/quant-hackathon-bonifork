@@ -24,13 +24,7 @@ class PageRank:
         self.last_season = None
 
     def add_match(self, match) -> None:
-        """
-        Add a match to the dataset.
-
-        Args:
-        - match: line with data
-
-        """
+        """Add a match to the dataset."""
         season = match["Season"]
         if self.last_season != season:
             self.last_season = season

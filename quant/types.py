@@ -99,11 +99,13 @@ class RankingModel(Protocol):
 class IAi(Protocol):
     """Ai interface."""
 
-    def place_bets(
-        self, summary: pd.DataFrame, opps: pd.DataFrame, inc: pd.DataFrame
-    ) -> pd.DataFrame:
-        """Check for implementation of bet fcn."""
-        raise NotImplementedError
+    def fit(self, training_dataframe: pd.DataFrame, outcomes: pd.Series) -> None:
+        """Check for implementation of fit fcn."""
+        raise NotImplementedError("No fit fcn implemented.")
+
+    def get_probabilities(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+        """Check for implementation of get_propabilities fcn."""
+        raise NotImplementedError("No get_propabilities fcn implemented.")
 
 
 class IModel(Protocol):
@@ -113,7 +115,7 @@ class IModel(Protocol):
         self, summary: pd.DataFrame, opps: pd.DataFrame, inc: pd.DataFrame
     ) -> pd.DataFrame:
         """Check for implementation of bet fcn."""
-        raise NotImplementedError
+        raise NotImplementedError("No place_bet fcn implemented.")
 
 
 def match_to_opp(match: Match) -> Opp:

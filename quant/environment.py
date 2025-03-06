@@ -63,7 +63,8 @@ class Environment:
 
     def run(self) -> pd.DataFrame:
         """Go thru each given date."""
-        print(f"Start: {self.start_date}, End: {self.end_date}")
+        print()  # for empty line on start
+        print(f"Start: {self.start_date.date()}, End: {self.end_date.date()}")
         for date in pd.date_range(self.start_date, self.end_date):
             # get results from previous day(s) and evaluate bets
             matches, players = self._next_date(date)
@@ -115,7 +116,7 @@ class Environment:
             # save current bankroll
             self._save_state(date + pd.Timedelta(6, unit="h"), 0.0)
 
-        print(f"{date} Bankroll: {self.bankroll:.2f}   ", end="\r")
+        print(f"{date.date()} Bankroll: {self.bankroll:.2f}   ", end="\r")
 
         return games.drop(["Open", *self.bet_cols], axis=1), players
 

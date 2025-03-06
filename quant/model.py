@@ -5,7 +5,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-from quant.bet import Player
+from quant.bet import Betting
 from quant.data import Data
 from quant.data_helper import TeamData
 from quant.predictors import AiRegresor
@@ -31,7 +31,7 @@ class Model(IModel):
         self.seen_matches = set()
         self.elo = Elo()
         self.elo_by_location = EloByLocation()
-        self.player = Player()
+        self.betting_bot = Betting()
         self.ai = AiRegresor()
         self.trained = False
         self.data = Data()
@@ -62,20 +62,22 @@ class Model(IModel):
             train_size = self.TRAIN_SIZE * self.FIRST_TRAIN_MOD
             print(
                 f"Initial training on {games_increment[-train_size :].shape[0]}"
-                f" matches with bankroll {summary.Bankroll}"
+                f" matches with bankroll {round(summary.Bankroll, 2)}"
             )
-            self.train_ai_reg(cast(pd.DataFrame, games_increment[-train_size:]))
+            self.train_ai_predictor(cast(pd.DataFrame, games_increment[-train_size:]))
+
         elif games_increment.shape[0] > 0:
             increment_season = int(games_increment.iloc[0]["Season"])
             if self.season_number != increment_season:
                 self.elo.reset()
                 self.elo_by_location.reset()
+
                 self.season_number = increment_season
 
             self.old_matches = pd.concat(
                 [
                     self.old_matches.iloc[-self.TRAIN_SIZE :],
-                    self.create_dataframe(games_increment),
+                    self._create_dataframe(games_increment),
                 ],
             )
 
@@ -92,10 +94,10 @@ class Model(IModel):
             month = pd.to_datetime(summary.Date).month
             if self.last_retrain != month:
                 print(
-                    f"{summary.Date}: retraining on {self.old_matches.shape[0]}"
-                    f" matches with bankroll {summary.Bankroll}"
+                    f"{summary.Date.date()}: retraining on {self.old_matches.shape[0]}"
+                    f" matches with bankroll {round(summary.Bankroll, 2)}"
                 )
-                self.ai.train_reg(self.old_matches, self.old_outcomes)
+                self.ai.fit(self.old_matches, self.old_outcomes)
                 self.last_retrain = month
                 self.budget = summary.Bankroll
 
@@ -110,9 +112,11 @@ class Model(IModel):
                 columns=pd.Index(["BetH", "BetA"], dtype="str"),
             )
 
-        dataframe = self.create_dataframe(active_matches)
-        probabilities = self.ai.get_probabilities_reg(dataframe)
-        bets = self.player.get_betting_strategy(probabilities, active_matches, summary)
+        dataframe = self._create_dataframe(active_matches)
+        probabilities = self.ai.get_probabilities(dataframe)
+        bets = self.betting_bot.get_betting_strategy(
+            probabilities, active_matches, summary
+        )
 
         new_bets = pd.DataFrame(
             data=bets,
@@ -122,17 +126,17 @@ class Model(IModel):
 
         return new_bets.reindex(opps.index, fill_value=0)
 
-    def create_dataframe(self, active_matches: pd.DataFrame) -> pd.DataFrame:
+    def _create_dataframe(self, active_matches: pd.DataFrame) -> pd.DataFrame:
         """Get matches to predict outcome for."""
         return cast(
             pd.DataFrame,
             active_matches.apply(
-                lambda x: self.get_match_parameters(match_to_opp(Match(0, *x))),
+                lambda x: self._get_match_parameters(match_to_opp(Match(0, *x))),
                 axis=1,
             ),
         )
 
-    def get_match_parameters(self, match: Opp) -> pd.Series:
+    def _get_match_parameters(self, match: Opp) -> pd.Series:
         """Get parameters for given match."""
         home_elo = self.elo.team_rating(match.HID)
         away_elo = self.elo.team_rating(match.AID)
@@ -151,40 +155,13 @@ class Model(IModel):
 
         return pd.concat([rankings, data_parameters], axis=0)
 
-    def train_ai(self, dataframe: pd.DataFrame) -> None:
+    def train_ai_predictor(self, dataframe: pd.DataFrame) -> None:
         """Train AI."""
         training_data = []
         outcomes_list = []
 
         for match in (Match(*x) for x in dataframe.itertuples()):
-            match_parameters = self.get_match_parameters(match_to_opp(match))
-
-            training_data.append(match_parameters)
-            outcomes_list.append(match.H)
-
-            self.data.add_match(match)
-            self.elo.add_match(match)
-            self.elo_by_location.add_match(match)
-
-        training_dataframe = pd.DataFrame(
-            training_data, columns=pd.Index(self.TRAINING_DATA_COLUMNS)
-        )
-
-        outcomes = pd.Series(outcomes_list)
-
-        self.old_matches = training_dataframe
-        self.old_outcomes = outcomes
-
-        self.ai.fit(training_dataframe, outcomes)
-        self.trained = True
-
-    def train_ai_reg(self, dataframe: pd.DataFrame) -> None:
-        """Train AI."""
-        training_data = []
-        outcomes_list = []
-
-        for match in (Match(*x) for x in dataframe.itertuples()):
-            match_parameters = self.get_match_parameters(match_to_opp(match))
+            match_parameters = self._get_match_parameters(match_to_opp(match))
 
             training_data.append(match_parameters)
             outcomes_list.append(match.HSC - match.ASC)
@@ -202,5 +179,5 @@ class Model(IModel):
         self.old_matches = training_dataframe
         self.old_outcomes = outcomes
 
-        self.ai.train_reg(training_dataframe, outcomes)
+        self.ai.fit(training_dataframe, outcomes)
         self.trained = True

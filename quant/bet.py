@@ -1,4 +1,3 @@
-# handles betting starteggy
 import math
 
 import numpy as np
@@ -8,7 +7,7 @@ from scipy.optimize import minimize
 from quant.types import Summary
 
 
-class Player:
+class Betting:
     """Handles betting strateggy."""
 
     def get_expected_profit(
