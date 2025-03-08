@@ -116,24 +116,3 @@ class IModel(Protocol):
     ) -> pd.DataFrame:
         """Check for implementation of bet fcn."""
         raise NotImplementedError("No place_bet fcn implemented.")
-
-
-def match_to_opp(match: Match) -> Opp:
-    """
-    Convert Match to Opp.
-
-    Fills Bets with 0.
-    """
-    return Opp(
-        Index=match.Index,
-        Season=match.Season,
-        Date=match.Date,
-        HID=match.HID,
-        AID=match.AID,
-        N=match.N,
-        POFF=match.POFF,
-        OddsH=match.OddsH,
-        OddsA=match.OddsA,
-        BetH=0,
-        BetA=0,
-    )

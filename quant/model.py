@@ -8,9 +8,10 @@ import pandas as pd
 from quant.bet import Betting
 from quant.data import Data
 from quant.data_helper import TeamData
-from quant.predictors import AiRegresor
+from quant.helper_fcn import match_to_opp
+from quant.predictors import AiRegresor, AiTorch
 from quant.ranking.elo import Elo, EloByLocation
-from quant.types import IModel, Match, Opp, Summary, match_to_opp
+from quant.types import IModel, Match, Opp, Summary
 
 
 class Model(IModel):
@@ -32,6 +33,7 @@ class Model(IModel):
         self.elo = Elo()
         self.elo_by_location = EloByLocation()
         self.betting_bot = Betting()
+        # self.ai = AiTorch(53)  # num of features (dimensions)
         self.ai = AiRegresor()
         self.trained = False
         self.data = Data()
@@ -52,10 +54,10 @@ class Model(IModel):
         self,
         summ: pd.DataFrame,
         opps: pd.DataFrame,
-        matches: pd.DataFrame,
+        inc: pd.DataFrame,
     ) -> pd.DataFrame:
         """Run main function."""
-        games_increment = matches
+        games_increment: Match = inc[0]
         summary = Summary(*summ.iloc[0])
 
         if not self.trained:
@@ -93,6 +95,7 @@ class Model(IModel):
 
             month = pd.to_datetime(summary.Date).month
             if self.last_retrain != month:
+
                 print(
                     f"{summary.Date.date()}: retraining on {self.old_matches.shape[0]}"
                     f" matches with bankroll {round(summary.Bankroll, 2)}"

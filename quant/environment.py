@@ -66,18 +66,19 @@ class Environment:
         print()  # for empty line on start
         print(f"Start: {self.start_date.date()}, End: {self.end_date.date()}")
         for date in pd.date_range(self.start_date, self.end_date):
+
             # get results from previous day(s) and evaluate bets
-            matches, players = self._next_date(date)
+            inc = self._next_date(date)
 
             # get betting options for current day
             # today's games + next day(s) games -> self.odds_availability
             opps = self._get_options(date)
-            if opps.empty and matches.empty and players.empty:
+            if opps.empty and inc[0].empty and inc[1].empty:
                 continue
 
             summary = self._generate_summary(date)
 
-            bets = self.model.place_bets(summary, opps, matches)
+            bets = self.model.place_bets(summary, opps, inc)
 
             validated_bets = self._validate_bets(bets, opps)
 
