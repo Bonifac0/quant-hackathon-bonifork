@@ -38,6 +38,7 @@ class AiRegresor(IAi):  # stara Michalovo B. verze
             shuffle=True,
         )
         self.model.fit(x_train, y_train)
+        print(self.model.predict(x_val) - y_val)
 
     def get_probabilities(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """Get probabilities for match outcome [home_loss, home_win]."""
@@ -47,6 +48,18 @@ class AiRegresor(IAi):  # stara Michalovo B. verze
     def save_model(self, path: os.PathLike) -> None:
         """Save ML model."""
         self.model.save_model(path)
+
+
+class DummyPredictor(IAi):
+    """For testing."""
+
+    def fit(self, training_dataframe: pd.DataFrame, outcomes: pd.Series) -> None:
+        pass
+
+    def get_probabilities(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+        """Get probabilities for match outcome [home_loss, home_win]."""
+        predicted_score_differences = self.model.predict(dataframe)
+        return calculate_probabilities(predicted_score_differences)
 
 
 class SimpleRegressor(nn.Module):
@@ -62,8 +75,8 @@ class SimpleRegressor(nn.Module):
 
         """  # noqa: E501
         super().__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, 1)
+        self.fc1 = nn.Linear(input_size, hidden_size, bias=True)
+        self.fc2 = nn.Linear(hidden_size, 1, bias=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -124,7 +137,8 @@ class AiTorch(IAi):
     def get_probabilities(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """Get probabilities for match outcome [home_loss, home_win] with normalized data."""  # noqa: E501
         with torch.no_grad():
-            inputs = self.scaler.transform(dataframe.to_numpy().astype(np.float32))
+            matice = dataframe.to_numpy().astype(np.float32)
+            inputs = self.scaler.transform(matice)
             inputs = torch.from_numpy(inputs)
             predicted_score_differences = self.model(inputs).squeeze().numpy()
         return calculate_probabilities(predicted_score_differences)

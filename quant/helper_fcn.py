@@ -7,7 +7,7 @@ from quant.types import Match, Opp
 # called from predictors.py
 def home_team_win_probability(score_difference: float) -> float:
     """Calculate the probability of home team winning based on score difference."""
-    slope = 0.8  # range optimal 0.1 to 1. liked 0.3 and 0.5 (maybe 1)
+    slope = 0.2  # range optimal 0.1 to 1. liked 0.3 and 0.5 (maybe 1)
     return 1 / (1 + np.exp(-slope * score_difference))
 
 

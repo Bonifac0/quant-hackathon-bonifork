@@ -153,7 +153,7 @@ class EloByLocation(RankingModel):
         away_elo = self.teams_away.setdefault(match.AID, TeamElo())
 
         played_enough = home_elo.games >= 10 and away_elo.games >= 10
-        return 100 * home_elo.predict(away_elo.rating) if played_enough else None
+        return home_elo.predict(away_elo.rating) if played_enough else None
 
     def reset(self) -> None:
         """Reset the model."""
