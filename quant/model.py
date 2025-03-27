@@ -9,12 +9,9 @@ from quant.bet import Betting
 from quant.data import Data
 from quant.data_helper import TeamData
 from quant.helper_fcn import match_to_opp
-from quant.predictors import AiRegresor, AiTorch  # noqa: F401
+from quant.predictors import AiRegresor, AiTorch, DummyPredictor  # noqa: F401
 from quant.ranking.elo import Elo, EloByLocation
 from quant.types import IModel, Match, Opp, Summary
-
-# TODO reanable regresor
-# TODO repair empty dataframes
 
 
 class Model(IModel):
@@ -22,8 +19,8 @@ class Model(IModel):
 
     TRAIN_SIZE: int = 2000
     FEATURES: int = 51
+
     RANKING_COLUMNS: tuple[str, ...] = ("EloByLocation",)
-    # MATCH_PARAMETERS = len(TeamData.COLUMNS) + len(RANKING_COLUMNS)
     TRAINING_DATA_COLUMNS: tuple[str, ...] = (*RANKING_COLUMNS, *TeamData.MATCH_COLUMNS)
 
     def __init__(self) -> None:
@@ -32,8 +29,8 @@ class Model(IModel):
         self.elo_by_location = EloByLocation()
         self.betting_bot = Betting()
         # self.predictor = AiTorch(self.FEATURES)
-        self.predictor = AiRegresor()
-        self.trained = False
+        # self.predictor = AiRegresor()
+        self.predictor = DummyPredictor()
         self.data = Data()
         self.season_number: int = 0
         self.stop_loss_limit: int = 0
@@ -103,7 +100,7 @@ class Model(IModel):
                 columns=pd.Index(["BetH", "BetA"], dtype="str"),
             )
 
-        test_data = self._create_numpy_array(active_matches)
+        # test_data = self._create_numpy_array(active_matches)
         data_to_predict = self._create_dataframe(active_matches)
         probabilities = self.predictor.get_probabilities(data_to_predict)
         bets = self.betting_bot.get_betting_strategy(
@@ -171,4 +168,3 @@ class Model(IModel):
         outcomes = pd.Series(outcomes_list)
 
         self.predictor.fit(training_dataframe, outcomes)
-        self.trained = True

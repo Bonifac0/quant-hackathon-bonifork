@@ -1,4 +1,4 @@
-from __future__ import annotations  # noqa: A005
+from __future__ import annotations
 
 from collections import namedtuple
 from typing import TYPE_CHECKING, Protocol, TypeAlias

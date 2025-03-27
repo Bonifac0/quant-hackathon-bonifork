@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 import torch
 import xgboost as xgb
 from sklearn import model_selection
@@ -15,8 +16,6 @@ from quant.types import IAi
 
 if TYPE_CHECKING:
     import os
-
-    import pandas as pd
 
 
 class AiRegresor(IAi):  # stara Michalovo B. verze
@@ -38,7 +37,6 @@ class AiRegresor(IAi):  # stara Michalovo B. verze
             shuffle=True,
         )
         self.model.fit(x_train, y_train)
-        print(self.model.predict(x_val) - y_val)
 
     def get_probabilities(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """Get probabilities for match outcome [home_loss, home_win]."""
@@ -51,15 +49,15 @@ class AiRegresor(IAi):  # stara Michalovo B. verze
 
 
 class DummyPredictor(IAi):
-    """For testing."""
+    """For testing, home always win."""
 
     def fit(self, training_dataframe: pd.DataFrame, outcomes: pd.Series) -> None:
-        pass
+        """Do nothing."""
 
     def get_probabilities(self, dataframe: pd.DataFrame) -> pd.DataFrame:
-        """Get probabilities for match outcome [home_loss, home_win]."""
-        predicted_score_differences = self.model.predict(dataframe)
-        return calculate_probabilities(predicted_score_differences)
+        """Return probabilities such home always win."""
+        probabilities = [(1, 0)] * dataframe.shape[0]
+        return pd.DataFrame(probabilities, columns=pd.Index(["WinHome", "WinAway"]))
 
 
 class SimpleRegressor(nn.Module):
@@ -146,3 +144,6 @@ class AiTorch(IAi):
     def save_model(self, path: os.PathLike) -> None:
         """Save ML model."""
         torch.save(self.model.state_dict(), path)
+
+
+# TODO mozna pridat keras

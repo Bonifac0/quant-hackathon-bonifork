@@ -5,7 +5,7 @@ from quant.types import Match, Opp
 
 
 # called from predictors.py
-def home_team_win_probability(score_difference: float) -> float:
+def sigmoid(score_difference: float) -> float:
     """Calculate the probability of home team winning based on score difference."""
     slope = 0.2  # range optimal 0.1 to 1. liked 0.3 and 0.5 (maybe 1)
     return 1 / (1 + np.exp(-slope * score_difference))
@@ -17,7 +17,7 @@ def calculate_probabilities(score_differences: np.ndarray) -> pd.DataFrame:
     probabilities = []
 
     for score_difference in score_differences:
-        home_prob = home_team_win_probability(score_difference)
+        home_prob = sigmoid(score_difference)
         away_prob = 1 - home_prob
         probabilities.append((home_prob, away_prob))
 
